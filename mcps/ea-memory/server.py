@@ -18,11 +18,29 @@ from typing import Optional, List
 from pydantic import BaseModel, Field, ConfigDict
 from mcp.server.fastmcp import FastMCP
 
+# === Server Metadata ===
+SERVER_METADATA = {
+    "name": "ea-memory",
+    "version": "1.0.0",
+    "author": "Early AI Adopters",
+    "course": "Claude Code Fundamentals",
+    "module": "04 - MCP Servers",
+    "description": "Simple memory system with tagging for Claude Code",
+    "capabilities": ["tools"],
+    "tools": [
+        {"name": "ea_remember", "description": "Store a memory with optional tags"},
+        {"name": "ea_recall", "description": "Search memories by keyword"},
+        {"name": "ea_list", "description": "List all memories with optional filtering"},
+        {"name": "ea_forget", "description": "Delete a memory by ID"},
+        {"name": "ea_memory_status", "description": "Get server status and metadata"},
+    ],
+    "storage_location": "~/.ea-memory/memories.json",
+}
+
 # Initialize the MCP server
 mcp = FastMCP(
     name="ea-memory",
-    version="1.0.0",
-    description="Simple memory system with tagging for Claude Code"
+    instructions="Simple memory system with tagging for Claude Code"
 )
 
 
@@ -406,6 +424,60 @@ async def ea_forget(params: ForgetInput) -> str:
             return f"Deleted: {params.memory_id}\nContent was: {preview}"
 
     return f"Memory not found: {params.memory_id}. Use ea_list to see available memory IDs."
+
+
+@mcp.tool(
+    name="ea_memory_status",
+    annotations={
+        "title": "Server Status",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False
+    }
+)
+async def ea_memory_status() -> str:
+    """Get server status and metadata.
+
+    Returns information about this MCP server including version,
+    available tools, and current storage statistics.
+
+    Use this to verify the server is running and see what it can do.
+
+    Returns:
+        str: Server metadata and status formatted as markdown
+    """
+    # Get storage stats
+    data = load_memories()
+    memory_count = len(data.get("memories", []))
+    storage_path = get_storage_path()
+
+    # Get unique tags
+    all_tags = set()
+    for mem in data.get("memories", []):
+        all_tags.update(mem.get("tags", []))
+
+    tools_list = "\n".join(f"  - **{t['name']}**: {t['description']}" for t in SERVER_METADATA["tools"])
+
+    return f"""# {SERVER_METADATA['name']} v{SERVER_METADATA['version']}
+
+**Author:** {SERVER_METADATA['author']}
+**Course:** {SERVER_METADATA['course']}
+**Module:** {SERVER_METADATA['module']}
+
+## Description
+{SERVER_METADATA['description']}
+
+## Available Tools
+{tools_list}
+
+## Current Stats
+- **Memories stored:** {memory_count}
+- **Unique tags:** {len(all_tags)}
+- **Storage path:** {storage_path}
+
+## Status: CONNECTED
+Server is running and ready to accept commands."""
 
 
 # === Entry Point ===

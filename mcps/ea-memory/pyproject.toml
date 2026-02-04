@@ -14,3 +14,7 @@ dependencies = [
 
 [project.scripts]
 ea-memory = "server:mcp.run"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+include = ["server.py"]

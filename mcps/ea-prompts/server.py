@@ -28,11 +28,35 @@ from typing import Optional
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from mcp.server.fastmcp import FastMCP
 
+# === Server Metadata ===
+SERVER_METADATA = {
+    "name": "ea-prompts",
+    "version": "1.0.0",
+    "author": "Early AI Adopters",
+    "course": "Claude Code Fundamentals",
+    "module": "04 - MCP Servers",
+    "description": "Prompt library demonstrating MCP Prompts capability",
+    "capabilities": ["tools", "prompts"],
+    "tools": [
+        {"name": "ea_add_prompt", "description": "Add a custom prompt to your library"},
+        {"name": "ea_list_prompts", "description": "List all available prompts"},
+        {"name": "ea_remove_prompt", "description": "Remove a custom prompt"},
+        {"name": "ea_prompts_status", "description": "Get server status and metadata"},
+    ],
+    "prompts": [
+        {"name": "code-review", "description": "Review code for issues and improvements"},
+        {"name": "explain-code", "description": "Explain what code does in plain English"},
+        {"name": "write-tests", "description": "Generate test cases for code"},
+        {"name": "refactor", "description": "Suggest refactoring improvements"},
+        {"name": "debug", "description": "Help debug an error or issue"},
+    ],
+    "storage_location": "~/.ea-prompts/custom_prompts.json",
+}
+
 # Initialize the MCP server
 mcp = FastMCP(
     name="ea-prompts",
-    version="1.0.0",
-    description="Prompt library demonstrating MCP Prompts capability"
+    instructions="Prompt library demonstrating MCP Prompts capability"
 )
 
 # === Built-in Prompts ===
@@ -431,6 +455,60 @@ async def ea_remove_prompt(params: RemovePromptInput) -> str:
     save_custom_prompts(custom)
 
     return f"Removed custom prompt: {params.name}"
+
+
+@mcp.tool(
+    name="ea_prompts_status",
+    annotations={
+        "title": "Server Status",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False
+    }
+)
+async def ea_prompts_status() -> str:
+    """Get server status and metadata.
+
+    Returns information about this MCP server including version,
+    available tools, prompts, and current statistics.
+
+    Use this to verify the server is running and see what it can do.
+
+    Returns:
+        str: Server metadata and status formatted as markdown
+    """
+    custom = load_custom_prompts()
+    storage_path = get_storage_path()
+
+    tools_list = "\n".join(f"  - **{t['name']}**: {t['description']}" for t in SERVER_METADATA["tools"])
+    prompts_list = "\n".join(f"  - **{p['name']}**: {p['description']}" for p in SERVER_METADATA["prompts"])
+
+    return f"""# {SERVER_METADATA['name']} v{SERVER_METADATA['version']}
+
+**Author:** {SERVER_METADATA['author']}
+**Course:** {SERVER_METADATA['course']}
+**Module:** {SERVER_METADATA['module']}
+
+## Description
+{SERVER_METADATA['description']}
+
+## Capabilities
+This MCP demonstrates both **Tools** and **Prompts** capabilities.
+
+## Available Tools
+{tools_list}
+
+## Built-in Prompts
+{prompts_list}
+
+## Current Stats
+- **Built-in prompts:** {len(BUILTIN_PROMPTS)}
+- **Custom prompts:** {len(custom)}
+- **Storage path:** {storage_path}
+
+## Status: CONNECTED
+Server is running and ready to accept commands."""
 
 
 # === Entry Point ===

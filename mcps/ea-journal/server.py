@@ -19,11 +19,30 @@ from enum import Enum
 from pydantic import BaseModel, Field, ConfigDict, field_validator
 from mcp.server.fastmcp import FastMCP
 
+# === Server Metadata ===
+SERVER_METADATA = {
+    "name": "ea-journal",
+    "version": "1.0.0",
+    "author": "Early AI Adopters",
+    "course": "Claude Code Fundamentals",
+    "module": "04 - MCP Servers",
+    "description": "Daily work journal for tracking progress, decisions, and blockers",
+    "capabilities": ["tools"],
+    "tools": [
+        {"name": "ea_log", "description": "Log an entry (work, decision, blocker, note, win, learning)"},
+        {"name": "ea_today", "description": "View today's journal entries"},
+        {"name": "ea_review", "description": "Review entries from a specific date or range"},
+        {"name": "ea_summary", "description": "Generate a summary of work over time"},
+        {"name": "ea_journal_status", "description": "Get server status and metadata"},
+    ],
+    "entry_types": ["work", "decision", "blocker", "note", "win", "learning"],
+    "storage_location": "~/.ea-journal/<date>.json",
+}
+
 # Initialize the MCP server
 mcp = FastMCP(
     name="ea-journal",
-    version="1.0.0",
-    description="Daily work journal for tracking progress, decisions, and blockers"
+    instructions="Daily work journal for tracking progress, decisions, and blockers"
 )
 
 
@@ -475,6 +494,71 @@ async def ea_summary(params: SummaryInput) -> str:
             output.append(f"- {preview}")
 
     return "\n".join(output)
+
+
+@mcp.tool(
+    name="ea_journal_status",
+    annotations={
+        "title": "Server Status",
+        "readOnlyHint": True,
+        "destructiveHint": False,
+        "idempotentHint": True,
+        "openWorldHint": False
+    }
+)
+async def ea_journal_status() -> str:
+    """Get server status and metadata.
+
+    Returns information about this MCP server including version,
+    available tools, and current journaling statistics.
+
+    Use this to verify the server is running and see what it can do.
+
+    Returns:
+        str: Server metadata and status formatted as markdown
+    """
+    now = datetime.now(timezone.utc)
+    today_entries = load_journal(now)
+    storage_dir = get_storage_path()
+
+    # Count journal files (days with entries)
+    journal_files = list(storage_dir.glob("*.json"))
+    total_days = len(journal_files)
+
+    # Count today's entries by type
+    type_counts = {}
+    for entry in today_entries:
+        t = entry.get("type", "note")
+        type_counts[t] = type_counts.get(t, 0) + 1
+
+    tools_list = "\n".join(f"  - **{t['name']}**: {t['description']}" for t in SERVER_METADATA["tools"])
+    entry_types = ", ".join(SERVER_METADATA["entry_types"])
+
+    today_summary = ", ".join(f"{count} {t}" for t, count in type_counts.items()) if type_counts else "No entries yet"
+
+    return f"""# {SERVER_METADATA['name']} v{SERVER_METADATA['version']}
+
+**Author:** {SERVER_METADATA['author']}
+**Course:** {SERVER_METADATA['course']}
+**Module:** {SERVER_METADATA['module']}
+
+## Description
+{SERVER_METADATA['description']}
+
+## Available Tools
+{tools_list}
+
+## Entry Types
+{entry_types}
+
+## Current Stats
+- **Today's date:** {now.strftime('%Y-%m-%d')}
+- **Today's entries:** {today_summary}
+- **Days with entries:** {total_days}
+- **Storage path:** {storage_dir}
+
+## Status: CONNECTED
+Server is running and ready to accept commands."""
 
 
 # === Entry Point ===
