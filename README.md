@@ -2,6 +2,26 @@
 
 > MCPs extend Claude's capabilities. They're not just API wrappers - they can provide tools, resources, and prompts.
 
+## Make It Your Own
+
+After cloning, remove the original remote and create your own GitHub repository:
+
+**Windows (PowerShell)**
+```powershell
+git remote remove origin
+gh repo create cc-fundamentals-04-mcps --public --source=. --remote=origin --push
+```
+
+**Mac / Linux**
+```bash
+git remote remove origin
+gh repo create cc-fundamentals-04-mcps --public --source=. --remote=origin --push
+```
+
+> **Prerequisite:** Install the [GitHub CLI](https://cli.github.com/) — `winget install GitHub.cli` (Windows) or `brew install gh` (Mac), then run `gh auth login` once.
+
+---
+
 ## Before the Purpose
 
 When most people hear "MCP," they think of API connections - Notion, Slack, Supabase. That's only part of the story.
